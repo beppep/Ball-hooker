@@ -9,14 +9,14 @@ time_step = 1.0/60
 resolution = (1200, 675)
 
 levels = [ #shape means radius btw
-[(1,-3), 0, [
+[(1,-3), 0, [ #level 1
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-6), (2, 2)],
 ]],
-[(1,-3), 0, [
+[(1,-3), 0, [ #level 2
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -24,11 +24,20 @@ levels = [ #shape means radius btw
     [(3,-7), (3, 2)],
     [(7,-6.5), (1, 3)],
 ]],
-[(1,-3), 0, [
+[(1,-3), 0, [ #level
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
+    [(8,-9), (4, 1), "death"],
+]],
+[(2,-resolution[1]/ppm+3), math.pi/4, [ #level noel
+    [(0,0), (resolution[0]/ppm,1)],
+    [(0,0), (1,resolution[1]/ppm)],
+    [(resolution[0]/ppm/2,0), (0.5,resolution[1]/ppm/2-1),"death"],
+    [(resolution[0]/ppm/2,-resolution[1]/ppm*3/4-1), (0.5,resolution[1]/ppm/4-0.2),"death"],
+    [(0,-resolution[1]/ppm), (resolution[0]/ppm,1)],
+    [(resolution[0]/ppm,0), (1,resolution[1]/ppm)],
 ]],
 ]
 
@@ -50,6 +59,13 @@ class Game():
 
     def __init__(self):
         self.currentLevel = None
+        self.imminentDeath = False
+
+    def destroyPlayer(self):
+        if(self.imminentDeath):
+            self.currentLevel.killPlayer()
+            self.currentLevel.spawnPlayer()
+            self.imminentDeath=False
 
     def update(self):
         self.currentLevel.update()
@@ -64,10 +80,21 @@ class Level():
         self.spawnrotation = spawnrotation
         self.boxShapes = boxes
         self.boxes = []
+        self.player = None
         for box in boxes:
-            self.boxes.append(world.CreateStaticBody(position=box[0],shapes=Box2D.b2PolygonShape(box=box[1])))
+            body = world.CreateStaticBody(position=box[0],shapes=Box2D.b2PolygonShape(box=box[1]))
+            if(len(box)>2):
+                body.userData = box[2]
+            self.boxes.append(body)
 
-        self.player = Player(spawnpoint, spawnrotation)
+        #self.player = Player(spawnpoint, spawnrotation)
+
+    def killPlayer(self):
+        world.DestroyBody(self.player.body)
+        self.player = None
+
+    def spawnPlayer(self):
+        self.player = Player(self.spawnpoint, self.spawnrotation)
 
     def destroy(self):
         for box in self.boxes:
@@ -77,23 +104,24 @@ class Level():
         self.player.update()
 
     def draw(self):
-        for box in self.boxShapes:
+        for i in range(len(self.boxShapes)):
+            box=self.boxShapes[i]
+            body=self.boxes[i]
             rect = ((box[0][0]-box[1][0])*ppm, -(box[0][1]+box[1][1])*ppm, box[1][0]*2*ppm, box[1][1]*2*ppm)
-            pygame.draw.rect(game_display, (200,250,100), rect,0)
+            if(body.userData=="death"):
+                pygame.draw.rect(game_display, (250,50,50), rect,0)
+            else:
+                pygame.draw.rect(game_display, (200,250,100), rect,0)
         self.player.draw()
 
 class Player():
 
     sprite = loadImage("Book.png", 0.5)
 
-    def __init__(self, spawnpoint, spawnrotation=90):
-        self.x, self.y = spawnpoint
-        self.a = spawnrotation
-        self.xv = 0
-        self.yv = 0
-        self.av = 0
-        self.body = world.CreateDynamicBody(fixtures=Box2D.b2FixtureDef(shape=Box2D.b2CircleShape(radius=0.5),density=1.0, friction=0.3, restitution=0.5),bullet=True,position=spawnpoint, userData=self)
-        self.rope = None
+    def __init__(self, spawnpoint, spawnrotation=math.pi/4):
+        self.body = world.CreateDynamicBody(fixtures=Box2D.b2FixtureDef(shape=Box2D.b2CircleShape(radius=0.5),density=1.0, friction=0.1, restitution=0.2),bullet=True,position=spawnpoint, userData=self)
+        self.body.angle=spawnrotation
+        self.rope = None #world.CreateDistanceJoint(bodyA=self.body, bodyB=game.currentLevel.boxes[1], anchorA=(1.3,-3),anchorB=(3.3,-1), collideConnected=True, userData=self)
 
     def hook(self):
         a = self.body.angle
@@ -124,15 +152,19 @@ class Player():
         if pressed[pygame.K_SPACE]:
             if self.rope:
                 actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
-                self.rope.length=actualLength-0.05
-                print(self.rope.length)
+                self.rope.length=actualLength-0.08
+                vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*1, (self.rope.anchorB[1] - self.rope.anchorA[1])*1)
+                self.body.ApplyForce(force=vect, point=self.body.position, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
+                #print(self.rope.length)
             else:
                 self.hook()
-                print("hooked")
+                #print("hooked")
         if pressed[pygame.K_e]:
             if self.rope:
                 world.DestroyJoint(self.rope)
                 self.rope = None
+        if pressed[pygame.K_r]:
+            game.imminentDeath=True
 
         if self.rope:
             vect = (self.rope.anchorB[0] - self.rope.anchorA[0], self.rope.anchorB[1] - self.rope.anchorA[1])
@@ -155,17 +187,31 @@ class Player():
             ourPoint = ((self.body.position[0]+math.cos(a)/2)*ppm, -(self.body.position[1]+math.sin(a)/2)*ppm)
             endPoint = ((self.body.position[0]+math.cos(a)*5)*ppm, -(self.body.position[1]+math.sin(a)*5)*ppm)
             pygame.draw.line(game_display, (250,10,100), ourPoint, endPoint, 2)
-        
+
+class myContactListener(Box2D.b2ContactListener):
+    def __init__(self):
+        Box2D.b2ContactListener.__init__(self)
+    def BeginContact(self, contact):
+        if(contact.fixtureA.body.userData=="death"): #Kanske måste checka vilken Fixture som ska användas
+            game.imminentDeath=True
+    def EndContact(self, contact):
+        pass
+    def PreSolve(self, contact, oldManifold):
+        pass
+    def PostSolve(self, contact, impulse):
+        pass
+
 pygame.init()
 clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
 
-world = Box2D.b2World()
+world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
 
 game.currentLevel = Level(*random.choice(levels))
 #game.currentLevel = Level((1,-3), 0, [[(random.random()*22,-random.random()*13), (random.random()*2,random.random()*2)] for i in range(12)])
+game.currentLevel.spawnPlayer()
 
 jump_out=False
 while jump_out == False:
@@ -184,7 +230,7 @@ while jump_out == False:
 
     pygame.display.flip()
 
-    
+    game.destroyPlayer()
 
     clock.tick(60)
 
