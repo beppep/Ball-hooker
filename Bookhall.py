@@ -9,27 +9,38 @@ time_step = 1.0/60
 resolution = (1200, 675)
 
 levels = [ #shape means radius btw
-[(1,-3), 0, [ #level 1
+[(1,-3), 0, [ #level 0
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-6), (2, 2)],
+    [(14.5,-4.5), (0.5, 3.5), "win"],
 ]],
-[(1,-3), 0, [ #level 2
+[(1,-4), 0, [ #level 1
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-7), (3, 2)],
     [(7,-6.5), (1, 3)],
+    [(14,-7), (0.5, 0.5), "win"],
 ]],
-[(1,-3), 0, [ #level
+[(1,-7), 0, [ #level 2
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
+    [(8,-1.5), (7, 0.5), "win"],
+]],
+[(1,-3), 0, [ #level 3
+    [(8,-9), (8, 1)],
+    [(8,0), (8, 1)],
+    [(0,-4.5), (1, 4.5)],
+    [(16,-4.5), (1, 4.5)],
+    [(2,-7), (2, 1)],
     [(8,-9), (4, 1), "death"],
+    [(14,-7), (0.5, 0.5), "win"],
 ]],
 [(2,-resolution[1]/ppm+3), math.pi/4, [ #level noel
     [(0,0), (resolution[0]/ppm,1)],
@@ -58,16 +69,26 @@ def rot_center(image, angle):
 class Game():
 
     def __init__(self):
+        self.levelNum = 0
         self.currentLevel = None
         self.imminentDeath = False
+        self.imminentWin = False
 
-    def destroyPlayer(self):
+    def startLevel(self, num=0):
+        self.currentLevel = Level(*levels[num])
+        self.currentLevel.spawnPlayer()
+
+    def update(self):
         if(self.imminentDeath):
             self.currentLevel.killPlayer()
             self.currentLevel.spawnPlayer()
             self.imminentDeath=False
-
-    def update(self):
+        if(self.imminentWin):
+            self.currentLevel.killPlayer()
+            self.currentLevel.destroy()
+            self.levelNum+=1
+            self.startLevel(self.levelNum)
+            self.imminentWin=False
         self.currentLevel.update()
 
     def draw(self):
@@ -110,8 +131,10 @@ class Level():
             rect = ((box[0][0]-box[1][0])*ppm, -(box[0][1]+box[1][1])*ppm, box[1][0]*2*ppm, box[1][1]*2*ppm)
             if(body.userData=="death"):
                 pygame.draw.rect(game_display, (250,50,50), rect,0)
+            elif(body.userData=="win"):
+                pygame.draw.rect(game_display, (50,200,100), rect,0)
             else:
-                pygame.draw.rect(game_display, (200,250,100), rect,0)
+                pygame.draw.rect(game_display, (50,50,100), rect,0)
         self.player.draw()
 
 class Player():
@@ -152,10 +175,11 @@ class Player():
         if pressed[pygame.K_SPACE]:
             if self.rope:
                 actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
-                self.rope.length=actualLength-0.08
-                vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*1, (self.rope.anchorB[1] - self.rope.anchorA[1])*1)
-                self.body.ApplyForce(force=vect, point=self.body.position, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
-                #print(self.rope.length)
+                if actualLength > 0.5:
+                    self.rope.length=actualLength-0.08
+                    vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*1, (self.rope.anchorB[1] - self.rope.anchorA[1])*1)
+                    self.body.ApplyForce(force=vect, point=self.body.position, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
+                    #print(self.rope.length)
             else:
                 self.hook()
                 #print("hooked")
@@ -181,12 +205,12 @@ class Player():
         if self.rope:
             ropeStart = (int(self.rope.anchorA[0]*ppm), -int(self.rope.anchorA[1]*ppm))
             ropeEnd = (int(self.rope.anchorB[0]*ppm), -int(self.rope.anchorB[1]*ppm))
-            pygame.draw.line(game_display, (100,250,200), ropeStart, ropeEnd, 4)
+            pygame.draw.line(game_display, (100,100,100), ropeStart, ropeEnd, 4)
         else:
             a = self.body.angle
             ourPoint = ((self.body.position[0]+math.cos(a)/2)*ppm, -(self.body.position[1]+math.sin(a)/2)*ppm)
             endPoint = ((self.body.position[0]+math.cos(a)*5)*ppm, -(self.body.position[1]+math.sin(a)*5)*ppm)
-            pygame.draw.line(game_display, (250,10,100), ourPoint, endPoint, 2)
+            pygame.draw.line(game_display, (250,100,100), ourPoint, endPoint, 2)
 
 class myContactListener(Box2D.b2ContactListener):
     def __init__(self):
@@ -194,6 +218,8 @@ class myContactListener(Box2D.b2ContactListener):
     def BeginContact(self, contact):
         if(contact.fixtureA.body.userData=="death"): #Kanske måste checka vilken Fixture som ska användas
             game.imminentDeath=True
+        if(contact.fixtureA.body.userData=="win"):
+            game.imminentWin=True
     def EndContact(self, contact):
         pass
     def PreSolve(self, contact, oldManifold):
@@ -209,9 +235,9 @@ world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
 
-game.currentLevel = Level(*random.choice(levels))
+game.startLevel()
+#game.startLevel(random.randint(0,len(levels)-1))
 #game.currentLevel = Level((1,-3), 0, [[(random.random()*22,-random.random()*13), (random.random()*2,random.random()*2)] for i in range(12)])
-game.currentLevel.spawnPlayer()
 
 jump_out=False
 while jump_out == False:
@@ -225,12 +251,10 @@ while jump_out == False:
     world.Step(time_step, 20,10)
     world.ClearForces()
 
-    game_display.fill((100,100,100))
+    game_display.fill((200,200,250))
     game.draw()
 
     pygame.display.flip()
-
-    game.destroyPlayer()
 
     clock.tick(60)
 
