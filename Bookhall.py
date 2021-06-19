@@ -5,7 +5,7 @@ import math
 import random
 
 ppm=75
-time_step = 1.0/60
+time_step = 1.0/90
 resolution = (1200, 675)
 
 levels = [ #shape means radius btw
@@ -16,6 +16,8 @@ levels = [ #shape means radius btw
     [(16,-4.5), (1, 4.5)],
     [(3,-6), (2, 2)],
     [(14.5,-4.5), (0.5, 3.5), "win"],
+    ],[
+    [(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
 ]],
 [(1,-4), 0, [ #level 1
     [(8,-9), (8, 1)],
@@ -26,14 +28,14 @@ levels = [ #shape means radius btw
     [(7,-6.5), (1, 3)],
     [(14,-7), (0.5, 0.5), "win"],
 ]],
-[(1,-7), 0, [ #level 2
+[(1,-7), 0, [ #roof goal
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(8,-1.5), (7, 0.5), "win"],
 ]],
-[(1,-3), 0, [ #level 3
+[(1,-3), 0, [ #3: lava floor
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -41,6 +43,16 @@ levels = [ #shape means radius btw
     [(2,-7), (2, 1)],
     [(8,-9), (4, 1), "death"],
     [(14,-7), (0.5, 0.5), "win"],
+]],
+[(1,-3), 0, [ #4: momentum jump
+    [(8,-9), (8, 1)],
+    [(4,0), (4, 1),], #left roof
+    [(12,0), (4, 1), "nograb"], #right roof
+    [(0,-4.5), (1, 4.5)],
+    [(16,-4.5), (1, 4.5), "nograb"],
+    [(2,-6), (2, 2)],
+    [(8,-2), (0.2, 2)],
+    [(14.5,-1.5), (0.5, 0.5), "win"],
 ]],
 [(2,-resolution[1]/ppm+3), math.pi/4, [ #level noel
     [(0,0), (resolution[0]/ppm,1)],
@@ -76,7 +88,6 @@ class Game():
 
     def startLevel(self, num=0):
         self.currentLevel = Level(*levels[num])
-        self.currentLevel.spawnPlayer()
 
     def update(self):
         if(self.imminentDeath):
@@ -94,47 +105,72 @@ class Game():
     def draw(self):
         self.currentLevel.draw()
 
+class Block():
+
+    def __init__(self, position, shape, typ=None, dynamic=False, isBox=True):
+        self.type = typ
+        self.dynamic = dynamic
+        if isBox: #lol
+            self.shape = [(-shape[0],-shape[1]),(shape[0],-shape[1]),(shape[0],shape[1]),(-shape[0],shape[1])]
+        else:
+            self.shape = shape
+        self.bodyShape = Box2D.b2PolygonShape(vertices=self.shape)
+        if self.dynamic:
+            self.body = world.CreateDynamicBody(position=position,shapes=self.bodyShape,userData=self)
+        else:
+            self.body = world.CreateStaticBody(position=position,shapes=self.bodyShape,userData=self)
+
+    def draw(self):
+        vertices = []
+        for v in self.shape:
+            vertices.append(((self.body.position[0]+v[0])*ppm, -(self.body.position[1]+v[1])*ppm))
+        if(self.type=="death"):
+            color = (250,50,50)
+        elif(self.type=="win"):
+            color = (50,200,100)
+        elif(self.type=="nograb"):
+            color = (50,0,50)
+        else:
+            color = (50,50,100)
+        pygame.draw.polygon(game_display, color, vertices, width=0)
+
 class Level():
 
-    def __init__(self, spawnpoint, spawnrotation, boxes):
+    def __init__(self, spawnpoint, spawnrotation, boxes, objects=[]):
         self.spawnpoint = spawnpoint
         self.spawnrotation = spawnrotation
-        self.boxShapes = boxes
-        self.boxes = []
+        self.blocks = []
+        self.objects = objects
+        self.dynamicBlocks = [] #maybe put everything in blocks?
         self.player = None
-        for box in boxes:
-            body = world.CreateStaticBody(position=box[0],shapes=Box2D.b2PolygonShape(box=box[1]))
-            if(len(box)>2):
-                body.userData = box[2]
-            self.boxes.append(body)
-
-        #self.player = Player(spawnpoint, spawnrotation)
+        for block in boxes:
+            self.blocks.append(Block(*block))
+        self.spawnPlayer()
 
     def killPlayer(self):
-        world.DestroyBody(self.player.body)
+        world.DestroyBody(self.player.body) #maybe not kill everything and just move it instead?
         self.player = None
+        for block in self.dynamicBlocks:
+            world.DestroyBody(block.body)
+        self.dynamicBlocks = []
 
     def spawnPlayer(self):
         self.player = Player(self.spawnpoint, self.spawnrotation)
+        for block in self.objects:
+            self.dynamicBlocks.append(Block(*block, dynamic=True, isBox=False))
 
     def destroy(self):
-        for box in self.boxes:
-            world.DestroyBody(box)
+        for block in self.blocks+self.dynamicBlocks:
+            world.DestroyBody(block.body)
+        self.blocks = []
+        self.dynamicBlocks = []
 
     def update(self):
         self.player.update()
 
     def draw(self):
-        for i in range(len(self.boxShapes)):
-            box=self.boxShapes[i]
-            body=self.boxes[i]
-            rect = ((box[0][0]-box[1][0])*ppm, -(box[0][1]+box[1][1])*ppm, box[1][0]*2*ppm, box[1][1]*2*ppm)
-            if(body.userData=="death"):
-                pygame.draw.rect(game_display, (250,50,50), rect,0)
-            elif(body.userData=="win"):
-                pygame.draw.rect(game_display, (50,200,100), rect,0)
-            else:
-                pygame.draw.rect(game_display, (50,50,100), rect,0)
+        for block in self.blocks+self.dynamicBlocks:
+            block.draw()
         self.player.draw()
 
 class Player():
@@ -144,26 +180,27 @@ class Player():
     def __init__(self, spawnpoint, spawnrotation=math.pi/4):
         self.body = world.CreateDynamicBody(fixtures=Box2D.b2FixtureDef(shape=Box2D.b2CircleShape(radius=0.5),density=1.0, friction=0.1, restitution=0.2),bullet=True,position=spawnpoint, userData=self)
         self.body.angle=spawnrotation
-        self.rope = None #world.CreateDistanceJoint(bodyA=self.body, bodyB=game.currentLevel.boxes[1], anchorA=(1.3,-3),anchorB=(3.3,-1), collideConnected=True, userData=self)
+        self.type = None #ta bort detta och se vad som händer. fixa en bättre lösning än detta också gärna.
+        self.rope = None
 
     def hook(self):
         a = self.body.angle
         inp = Box2D.b2RayCastInput(p1=self.body.position, p2=self.body.position+(math.cos(a),math.sin(a)), maxFraction=5)
         out = Box2D.b2RayCastOutput()
-        dists = []
-        for i in range(len(game.currentLevel.boxShapes)):
-            box = game.currentLevel.boxShapes[i]
-            transform = game.currentLevel.boxes[i].transform
-            shape = Box2D.b2PolygonShape(box=box[1])
-            hit = shape.RayCast(out, inp, transform, 0)
+        candidates = []
+        for block in game.currentLevel.blocks+game.currentLevel.dynamicBlocks:
+            if block.type == "nograb":
+                continue
+            transform = block.body.transform
+            hit = block.bodyShape.RayCast(out, inp, transform, 0)
             if hit:
                 hit_point = inp.p1 + out.fraction*(inp.p2 - inp.p1)
                 dist = math.sqrt((hit_point[0] - inp.p1[0])**2 + (hit_point[1] - inp.p1[1])**2)
-                dists.append((i,dist,hit_point))
-        if dists:
-            dist = min(dists, key=lambda x:x[1])
+                candidates.append((block.body, dist, hit_point))
+        if candidates:
+            closest = min(candidates, key=lambda x:x[1])
             ourPoint=self.body.position+(math.cos(a)/2,math.sin(a)/2)
-            self.rope=world.CreateDistanceJoint(bodyA=self.body, bodyB=game.currentLevel.boxes[dist[0]], anchorA=ourPoint,anchorB=dist[2], collideConnected=True, userData=self)
+            self.rope=world.CreateDistanceJoint(bodyA=self.body, bodyB=closest[0], anchorA=ourPoint,anchorB=closest[2], collideConnected=True, userData=self)
             
     def update(self):
         pressed = pygame.key.get_pressed()
@@ -216,9 +253,9 @@ class myContactListener(Box2D.b2ContactListener):
     def __init__(self):
         Box2D.b2ContactListener.__init__(self)
     def BeginContact(self, contact):
-        if(contact.fixtureA.body.userData=="death"): #Kanske måste checka vilken Fixture som ska användas
+        if(contact.fixtureA.body.userData.type=="death"): #Kanske måste checka vilken Fixture som ska användas
             game.imminentDeath=True
-        if(contact.fixtureA.body.userData=="win"):
+        if(contact.fixtureA.body.userData.type=="win"):
             game.imminentWin=True
     def EndContact(self, contact):
         pass
