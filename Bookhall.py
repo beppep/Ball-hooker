@@ -9,7 +9,7 @@ time_step = 1.0/90
 resolution = (1200, 675)
 
 levels = [ #shape means radius btw
-[(1,-3), 0, [ #level 0
+[(1,-3), 1, [ #level 0
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -17,25 +17,26 @@ levels = [ #shape means radius btw
     [(3,-6), (2, 2)],
     [(14.5,-4.5), (0.5, 3.5), "win"],
     ],[
-    [(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
+    #[(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
 ]],
-[(1,-4), 0, [ #level 1
+[(4.4,-4), 2, [ #level 1
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-7), (3, 2)],
-    [(7,-6.5), (1, 3)],
     [(14,-7), (0.5, 0.5), "win"],
+    ],[
+    [(7,-6.5), [(-1,-3),(1,-3),(1,3),(-1, 3)]],
 ]],
-[(1,-7), 0, [ #roof goal
+[(3,-7.4), 2.2, [ #roof goal
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(8,-1.5), (7, 0.5), "win"],
 ]],
-[(1,-3), 0, [ #3: lava floor
+[(1,-3), 1, [ #3: lava floor
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -44,7 +45,7 @@ levels = [ #shape means radius btw
     [(8,-9), (4, 1), "death"],
     [(14,-7), (0.5, 0.5), "win"],
 ]],
-[(1,-3), 0, [ #4: momentum jump
+[(1,-3), 1, [ #4: momentum jump
     [(8,-9), (8, 1)],
     [(4,0), (4, 1),], #left roof
     [(12,0), (4, 1), "nograb"], #right roof
@@ -54,7 +55,7 @@ levels = [ #shape means radius btw
     [(8,-2), (0.2, 2)],
     [(14.5,-1.5), (0.5, 0.5), "win"],
 ]],
-[(2,-resolution[1]/ppm+3), math.pi/4, [ #level noel
+[(2,-resolution[1]/ppm+3), 2, [ #level noel
     [(0,0), (resolution[0]/ppm,1)],
     [(0,0), (1,resolution[1]/ppm)],
     [(resolution[0]/ppm/2,0), (0.5,resolution[1]/ppm/2-1),"death"],
@@ -87,6 +88,7 @@ class Game():
         self.imminentWin = False
 
     def startLevel(self, num=0):
+        self.levelNum = num
         self.currentLevel = Level(*levels[num])
 
     def update(self):
@@ -116,14 +118,14 @@ class Block():
             self.shape = shape
         self.bodyShape = Box2D.b2PolygonShape(vertices=self.shape)
         if self.dynamic:
-            self.body = world.CreateDynamicBody(position=position,shapes=self.bodyShape,userData=self)
+            self.body = world.CreateDynamicBody(position=position,fixtures=Box2D.b2FixtureDef(shape=self.bodyShape,density=0.2, friction=0.1, restitution=0.2),bullet=True,userData=self)
         else:
             self.body = world.CreateStaticBody(position=position,shapes=self.bodyShape,userData=self)
 
     def draw(self):
         vertices = []
-        for v in self.shape:
-            vertices.append(((self.body.position[0]+v[0])*ppm, -(self.body.position[1]+v[1])*ppm))
+        for i in range(len(self.shape)):
+            vertices.append((self.body.GetWorldPoint(self.shape[i])[0]*ppm, -self.body.GetWorldPoint(self.shape[i])[1]*ppm))
         if(self.type=="death"):
             color = (250,50,50)
         elif(self.type=="win"):
@@ -180,12 +182,12 @@ class Player():
     def __init__(self, spawnpoint, spawnrotation=math.pi/4):
         self.body = world.CreateDynamicBody(fixtures=Box2D.b2FixtureDef(shape=Box2D.b2CircleShape(radius=0.5),density=1.0, friction=0.1, restitution=0.2),bullet=True,position=spawnpoint, userData=self)
         self.body.angle=spawnrotation
-        self.type = None #ta bort detta och se vad som händer. fixa en bättre lösning än detta också gärna.
+        self.type = "player" #för att vinnas
         self.rope = None
 
     def hook(self):
         a = self.body.angle
-        inp = Box2D.b2RayCastInput(p1=self.body.position, p2=self.body.position+(math.cos(a),math.sin(a)), maxFraction=5)
+        inp = Box2D.b2RayCastInput(p1=self.body.position, p2=self.body.position+(math.cos(a),math.sin(a)), maxFraction=6)
         out = Box2D.b2RayCastOutput()
         candidates = []
         for block in game.currentLevel.blocks+game.currentLevel.dynamicBlocks:
@@ -204,11 +206,12 @@ class Player():
             
     def update(self):
         pressed = pygame.key.get_pressed()
+        """
         if pressed[pygame.K_d]:
             self.body.ApplyTorque(-1, wake=True)
         if pressed[pygame.K_a]:
             self.body.ApplyTorque(1, wake=True)
-
+        """
         if pressed[pygame.K_SPACE]:
             if self.rope:
                 actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
@@ -246,16 +249,16 @@ class Player():
         else:
             a = self.body.angle
             ourPoint = ((self.body.position[0]+math.cos(a)/2)*ppm, -(self.body.position[1]+math.sin(a)/2)*ppm)
-            endPoint = ((self.body.position[0]+math.cos(a)*5)*ppm, -(self.body.position[1]+math.sin(a)*5)*ppm)
+            endPoint = ((self.body.position[0]+math.cos(a)*6)*ppm, -(self.body.position[1]+math.sin(a)*6)*ppm)
             pygame.draw.line(game_display, (250,100,100), ourPoint, endPoint, 2)
 
 class myContactListener(Box2D.b2ContactListener):
     def __init__(self):
         Box2D.b2ContactListener.__init__(self)
     def BeginContact(self, contact):
-        if(contact.fixtureA.body.userData.type=="death"): #Kanske måste checka vilken Fixture som ska användas
+        if(contact.fixtureA.body.userData.type=="death" and contact.fixtureB.body.userData.type=="player"): #Kanske måste checka vilken Fixture som ska användas
             game.imminentDeath=True
-        if(contact.fixtureA.body.userData.type=="win"):
+        if(contact.fixtureA.body.userData.type=="win" and contact.fixtureB.body.userData.type=="player"):
             game.imminentWin=True
     def EndContact(self, contact):
         pass
@@ -272,7 +275,7 @@ world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
 
-game.startLevel()
+game.startLevel(0)
 #game.startLevel(random.randint(0,len(levels)-1))
 #game.currentLevel = Level((1,-3), 0, [[(random.random()*22,-random.random()*13), (random.random()*2,random.random()*2)] for i in range(12)])
 
