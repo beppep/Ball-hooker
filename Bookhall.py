@@ -1,4 +1,5 @@
 import pygame
+import pygame_gui
 import time
 import Box2D
 import math
@@ -65,6 +66,21 @@ levels = [ #shape means radius btw
 ]],
 ]
 
+pygame.init()
+
+managers={
+    "":pygame_gui.UIManager(resolution), #
+    "l":pygame_gui.UIManager(resolution), #Level select
+    "p":pygame_gui.UIManager(resolution), #Playing
+    }
+
+# Main
+level_buttons = []
+for i in range(10):
+    button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+i*100, 100), (100, 100)),text="Level "+str(i),manager=managers["l"])
+    level_buttons.append(button)
+
+
 def loadImage(name,r):
     image = pygame.image.load("BookhallFiles/textures/"+name)
     image = pygame.transform.scale(image, (int(r*2*ppm), int(r*2*ppm)))
@@ -82,6 +98,7 @@ def rot_center(image, angle):
 class Game():
 
     def __init__(self):
+        self.mode = "l"
         self.levelNum = 0
         self.currentLevel = None
         self.imminentDeath = False
@@ -102,10 +119,12 @@ class Game():
             self.levelNum+=1
             self.startLevel(self.levelNum)
             self.imminentWin=False
-        self.currentLevel.update()
+        if self.currentLevel:
+            self.currentLevel.update()
 
     def draw(self):
-        self.currentLevel.draw()
+        if self.currentLevel:
+            self.currentLevel.draw()
 
 class Block():
 
@@ -267,24 +286,32 @@ class myContactListener(Box2D.b2ContactListener):
     def PostSolve(self, contact, impulse):
         pass
 
-pygame.init()
 clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
+pygame.display.set_caption('Hall Booker!')
 
 world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
 
-game.startLevel(0)
-#game.startLevel(random.randint(0,len(levels)-1))
-#game.currentLevel = Level((1,-3), 0, [[(random.random()*22,-random.random()*13), (random.random()*2,random.random()*2)] for i in range(12)])
 
 jump_out=False
 while jump_out == False:
 
+    time_delta = clock.tick(60)
+    manager=managers[game.mode]
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             jump_out = True
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED or 1:
+                print(2)
+                
+                #buttons
+                if event.ui_element in level_buttons:
+                    game.mode="p"
+                    game.startLevel(level_buttons.index(event.ui_element))
+    manager.update(time_delta)
 
     game.update()
 
@@ -293,10 +320,10 @@ while jump_out == False:
 
     game_display.fill((200,200,250))
     game.draw()
+    manager.draw_ui(game_display)
 
     pygame.display.flip()
 
-    clock.tick(60)
 
 pygame.quit()
 quit()
