@@ -10,7 +10,7 @@ time_step = 1.0/90
 resolution = (1200, 675)
 
 levels = [ #shape means radius btw
-[(1,-3), 1, [ #level 0
+[(1,-3), 1, [ #0
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -20,7 +20,7 @@ levels = [ #shape means radius btw
     ],[
     #[(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
 ]],
-[(4.4,-4), 2, [ #level 1
+[(4.4,-4), 2, [ #1
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -30,7 +30,7 @@ levels = [ #shape means radius btw
     ],[
     [(7,-6.5), [(-1,-3),(1,-3),(1,3),(-1, 3)]],
 ]],
-[(3,-7.4), 2.2, [ #roof goal
+[(3,-7.4), 2.2, [ #2: roof goal
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
@@ -56,16 +56,32 @@ levels = [ #shape means radius btw
     [(8,-2), (0.2, 2)],
     [(14.5,-1.5), (0.5, 0.5), "win"],
 ]],
-[(2,-resolution[1]/ppm+3), 2, [ #level noel
-    [(0,0), (resolution[0]/ppm,1)],
-    [(0,0), (1,resolution[1]/ppm)],
-    [(resolution[0]/ppm/2,0), (0.5,resolution[1]/ppm/2-1),"death"],
-    [(resolution[0]/ppm/2,-resolution[1]/ppm*3/4-1), (0.5,resolution[1]/ppm/4-0.2),"death"],
-    [(0,-resolution[1]/ppm), (resolution[0]/ppm,1)],
-    [(resolution[0]/ppm,0), (1,resolution[1]/ppm)],
+[(2,-7), 2.4, [ #5: Slit
+    [(8,-1.5), (0.5,2),"death"],
+    [(8,-7.5), (0.5,2),"death"],
+    [(8,-9), (8, 1)],
+    [(8,0), (8, 1)],
+    [(0,-4.5), (1, 4.5)],
+    [(16,-4.5), (1, 4.5)],
+    [(15,0), (1,9), "win"],
+]],
+[(2,-7), 1, [ #6: Low High
+    [(8,-9), (8, 1)],
+    [(8,0), (8, 1)],
+    [(0,-4.5), (1, 4.5)],
+    [(16,-4.5), (1, 4.5)],
+    [(6,-3.5), (1, 3)],
+    [(10,-6.5), (1, 3)],
+    [(15,0), (1,9), "win"],
+]],
+[(2,-6), 1.6, [ #7: Lava Room
+    [(8,-9), (8, 1),"death"],
+    [(8,0), (8, 1),"death"],
+    [(0,-4.5), (1, 4.5),"death"],
+    [(16,-4.5), (1, 4.5),"death"],
+    [(15,0), (1,9), "win"],
 ]],
 ]
-
 pygame.init()
 
 managers={
@@ -76,7 +92,7 @@ managers={
 
 # Main
 level_buttons = []
-for i in range(10):
+for i in range(8):
     button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+i*100, 100), (100, 100)),text="Level "+str(i),manager=managers["l"])
     level_buttons.append(button)
 
@@ -304,13 +320,13 @@ while jump_out == False:
         if event.type == pygame.QUIT:
             jump_out = True
         if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED or 1:
-                print(2)
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED: #or 1:
                 
                 #buttons
                 if event.ui_element in level_buttons:
                     game.mode="p"
                     game.startLevel(level_buttons.index(event.ui_element))
+        manager.process_events(event)
     manager.update(time_delta)
 
     game.update()
