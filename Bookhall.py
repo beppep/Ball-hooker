@@ -16,9 +16,9 @@ levels = [ #shape means radius btw
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-6), (2, 2)],
-    [(14.5,-4.5), (0.5, 3.5), "win"],
+    [(14.5,-4.5), (0.5, 3.5), ["win"]],
     ],[
-    #[(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
+    [(8,-5), [(-1,0),(1,-1),(1,1),(-1,1)]],
 ]],
 [(4.4,-4), 2, [ #1
     [(8,-9), (8, 1)],
@@ -26,7 +26,7 @@ levels = [ #shape means radius btw
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(3,-7), (3, 2)],
-    [(14,-7), (0.5, 0.5), "win"],
+    [(14,-7), (0.5, 0.5), ["win"]],
     ],[
     [(7,-6.5), [(-1,-3),(1,-3),(1,3),(-1, 3)]],
 ]],
@@ -35,7 +35,7 @@ levels = [ #shape means radius btw
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
-    [(8,-1.5), (7, 0.5), "win"],
+    [(8,-1.5), (7, 0.5), ["win"]],
 ]],
 [(1,-3), 1, [ #3: lava floor
     [(8,-9), (8, 1)],
@@ -43,27 +43,27 @@ levels = [ #shape means radius btw
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
     [(2,-7), (2, 1)],
-    [(8,-9), (4, 1), "death"],
-    [(14,-7), (0.5, 0.5), "win"],
+    [(8,-9), (4, 1), ["death"]],
+    [(14,-7), (0.5, 0.5), ["win"]],
 ]],
 [(1,-3), 1, [ #4: momentum jump
     [(8,-9), (8, 1)],
     [(4,0), (4, 1),], #left roof
-    [(12,0), (4, 1), "nograb"], #right roof
+    [(12,0), (4, 1), ["nograb"]], #right roof
     [(0,-4.5), (1, 4.5)],
-    [(16,-4.5), (1, 4.5), "nograb"],
+    [(16,-4.5), (1, 4.5), ["nograb"]],
     [(2,-6), (2, 2)],
     [(8,-2), (0.2, 2)],
-    [(14.5,-1.5), (0.5, 0.5), "win"],
+    [(14.5,-1.5), (0.5, 0.5), ["win"]],
 ]],
 [(2,-7), 2.4, [ #5: Slit
-    [(8,-1.5), (0.5,2),"death"],
-    [(8,-7.5), (0.5,2),"death"],
+    [(8,-1.5), (0.5,2),["death"]],
+    [(8,-7.5), (0.5,2),["death"]],
     [(8,-9), (8, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
-    [(15,0), (1,9), "win"],
+    [(15,0), (1,9), ["win"]],
 ]],
 [(2,-7), 1, [ #6: Low High
     [(8,-9), (8, 1)],
@@ -72,14 +72,29 @@ levels = [ #shape means radius btw
     [(16,-4.5), (1, 4.5)],
     [(6,-3.5), (1, 3)],
     [(10,-6.5), (1, 3)],
-    [(15,0), (1,9), "win"],
+    [(15,0), (1,9), ["win"]],
 ]],
 [(2,-6), 1.6, [ #7: Lava Room
-    [(8,-9), (8, 1),"death"],
-    [(8,0), (8, 1),"death"],
-    [(0,-4.5), (1, 4.5),"death"],
-    [(16,-4.5), (1, 4.5),"death"],
-    [(15,0), (1,9), "win"],
+    [(8,-9), (8, 1),["death"]],
+    [(8,0), (8, 1),["death"]],
+    [(0,-4.5), (1, 4.5),["death"]],
+    [(16,-4.5), (1, 4.5),["death"]],
+    [(15,0), (1,9), ["win"]],
+]],
+[(1.5,-1.5), 2, [ #7: :)  
+    [(8,0), (8, 1),["nograb"]],
+    [(0,-4.5), (1, 4.5),["nograb"  ]],
+    [(16,-4.5), (1, 4.5),["nograb","win"]],
+    [(8,-9), (8, 1),["nograb","death"]],
+    [(3,-6), [(-2,4),(-1,2),(-1,-2),(-2,-2)],["nograb"],False,False],  #Box2d klar inte konkava polygoner
+    [(3,-6), [(-1,2),(0,1),(0,-2),(-1,-2)],["nograb"],False,False],
+    [(3,-6), [(0,1),(1,0.5),(1,-2),(0,-2)],["nograb"],False,False],
+    [(3,-6), [(1,0.5),(2,0.25),(2,-2),(1,-2)],["nograb"],False,False],
+    [(3,-6), [(2,0.25),(3,0.25),(3,-2),(2,-2)],["nograb"],False,False],
+    [(3,-6), [(3,0.25),(4,0.5),(4,-2),(3,-2)],["nograb"],False,False],
+    [(3,-6), [(4,0.5),(5,1),(4,-2)],["nograb"],False,False],
+    ],[
+    [(3,-6), [(5,1),(5,-2),(4,-2)]],
 ]],
 ]
 pygame.init()
@@ -92,7 +107,7 @@ managers={
 
 # Main
 level_buttons = []
-for i in range(8):
+for i in range(9):
     button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+i*100, 100), (100, 100)),text="Level "+str(i),manager=managers["l"])
     level_buttons.append(button)
 
@@ -144,8 +159,8 @@ class Game():
 
 class Block():
 
-    def __init__(self, position, shape, typ=None, dynamic=False, isBox=True):
-        self.type = typ
+    def __init__(self, position, shape, typ=[], dynamic=False, isBox=True):
+        self.blockType = typ
         self.dynamic = dynamic
         if isBox: #lol
             self.shape = [(-shape[0],-shape[1]),(shape[0],-shape[1]),(shape[0],shape[1]),(-shape[0],shape[1])]
@@ -161,14 +176,14 @@ class Block():
         vertices = []
         for i in range(len(self.shape)):
             vertices.append((self.body.GetWorldPoint(self.shape[i])[0]*ppm, -self.body.GetWorldPoint(self.shape[i])[1]*ppm))
-        if(self.type=="death"):
-            color = (250,50,50)
-        elif(self.type=="win"):
-            color = (50,200,100)
-        elif(self.type=="nograb"):
-            color = (50,0,50)
-        else:
-            color = (50,50,100)
+        color=[50,50,100]
+        if("win" in self.blockType):
+            color[1]+=150
+        if("death" in self.blockType):
+            color[0]+=200
+        if("nograb" in self.blockType):
+            color[1]-=50
+            color[2]-=50
         pygame.draw.polygon(game_display, color, vertices, width=0)
 
 class Level():
@@ -217,7 +232,7 @@ class Player():
     def __init__(self, spawnpoint, spawnrotation=math.pi/4):
         self.body = world.CreateDynamicBody(fixtures=Box2D.b2FixtureDef(shape=Box2D.b2CircleShape(radius=0.5),density=1.0, friction=0.1, restitution=0.2),bullet=True,position=spawnpoint, userData=self)
         self.body.angle=spawnrotation
-        self.type = "player" #för att vinnas
+        self.blockType = "player" #för att vinnas
         self.rope = None
 
     def hook(self):
@@ -226,7 +241,8 @@ class Player():
         out = Box2D.b2RayCastOutput()
         candidates = []
         for block in game.currentLevel.blocks+game.currentLevel.dynamicBlocks:
-            if block.type == "nograb":
+            if "nograb" in block.blockType:
+
                 continue
             transform = block.body.transform
             hit = block.bodyShape.RayCast(out, inp, transform, 0)
@@ -291,9 +307,9 @@ class myContactListener(Box2D.b2ContactListener):
     def __init__(self):
         Box2D.b2ContactListener.__init__(self)
     def BeginContact(self, contact):
-        if(contact.fixtureA.body.userData.type=="death" and contact.fixtureB.body.userData.type=="player"): #Kanske måste checka vilken Fixture som ska användas
+        if("death" in contact.fixtureA.body.userData.blockType and "player" in contact.fixtureB.body.userData.blockType): #Kanske måste checka vilken Fixture som ska användas
             game.imminentDeath=True
-        if(contact.fixtureA.body.userData.type=="win" and contact.fixtureB.body.userData.type=="player"):
+        if("win" in contact.fixtureA.body.userData.blockType and "player" in contact.fixtureB.body.userData.blockType):
             game.imminentWin=True
     def EndContact(self, contact):
         pass
