@@ -114,9 +114,11 @@ managers={
 
 # Main
 level_buttons = []
-for i in range(9):
-    button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+i*100, 100), (100, 100)),text="Level "+str(i),manager=managers["l"])
-    level_buttons.append(button)
+lpr = 10 #levels per row
+for i in range(len(levels)//lpr+1):
+    for j in range(min(lpr,len(levels)-lpr*i)):
+        button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+j*100, 100+i*100), (100, 100)),text="Level "+str(i*lpr+j),manager=managers["l"])
+        level_buttons.append(button)
 
 
 def loadImage(name,r):
