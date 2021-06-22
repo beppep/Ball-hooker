@@ -5,6 +5,8 @@ import Box2D
 import math
 import random
 
+#B69.47588801383972
+
 ppm=75
 time_step = 1.0/90
 resolution = (1200, 675)
@@ -56,10 +58,11 @@ levels = [ #shape means radius btw
     [(8,-2), (0.2, 2)],
     [(14.5,-1.5), (0.5, 0.5), ["win"]],
 ]],
-[(2,-7), 2.4, [ #5: Slit
+[(2,-5), 1.4, [ #5: Slit
     [(8,-1.5), (0.5,2),["death"]],
     [(8,-7.5), (0.5,2),["death"]],
     [(8,-9), (8, 1)],
+    [(2,-6), (2, 0.5)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
@@ -81,7 +84,7 @@ levels = [ #shape means radius btw
     [(16,-4.5), (1, 4.5),["death"]],
     [(15,0), (1,9), ["win"]],
 ]],
-[(1.5,-1.5), 2, [ #7: :)  
+[(1.5,-1.5), 2, [ #8: :)  x
     [(8,0), (8, 1),["nograb"]],
     [(0,-4.5), (1, 4.5),["nograb"  ]],
     [(16,-4.5), (1, 4.5),["nograb","win"]],
@@ -94,15 +97,15 @@ levels = [ #shape means radius btw
     [(3,-6), [(3,0.25),(4,0.5),(4,-2),(3,-2)],["nograb"],False,False],
     [(3,-6), [(4,0.5),(5,1),(4,-2)],["nograb"],False,False],
     ],[
-    [(3,-6), [(5,1),(5,-2),(4,-2)]],
+    [(3,-6), [(5,1),(4,-2),(4,1)]],
 ]],
-[(2,-2), 4.6, [ #7: Lava Room 2
-    [(8,-9), (8, 1),["death"]],
-    [(8,0), (8, 1),["death","nograb"]],
-    [(0,-4.5), (1, 4.5),["death"]],
-    [(16,-4.5), (1, 4.5),["death"]],
-    [(15,0), (1,9), ["win"]],
-]],
+# [(2,-2), 4.6, [ #9: Lava Room 2
+#     [(8,-9), (8, 1),["death"]],
+#     [(8,0), (8, 1),["death","nograb"]],
+#     [(0,-4.5), (1, 4.5),["death"]],
+#     [(16,-4.5), (1, 4.5),["death"]],
+#     [(15,0), (1,9), ["win"]],
+# ]],
 ]
 pygame.init()
 
@@ -146,6 +149,8 @@ class Game():
 
     def startLevel(self, num=0):
         self.levelNum = num
+        if(num>len(levels)-1):
+            print(time.time() - time_start)
         self.currentLevel = Level(*levels[num])
 
     def update(self):
@@ -250,19 +255,21 @@ class Player():
         out = Box2D.b2RayCastOutput()
         candidates = []
         for block in game.currentLevel.blocks+game.currentLevel.dynamicBlocks:
-            if "nograb" in block.blockType:
-
-                continue
+            #if "nograb" in block.blockType:
+            #    continue
             transform = block.body.transform
             hit = block.bodyShape.RayCast(out, inp, transform, 0)
             if hit:
                 hit_point = inp.p1 + out.fraction*(inp.p2 - inp.p1)
                 dist = math.sqrt((hit_point[0] - inp.p1[0])**2 + (hit_point[1] - inp.p1[1])**2)
-                candidates.append((block.body, dist, hit_point))
+                candidates.append((block.body, dist, hit_point,block.blockType))
         if candidates:
             closest = min(candidates, key=lambda x:x[1])
             ourPoint=self.body.position+(math.cos(a)/2,math.sin(a)/2)
-            self.rope=world.CreateDistanceJoint(bodyA=self.body, bodyB=closest[0], anchorA=ourPoint,anchorB=closest[2], collideConnected=True, userData=self)
+            if(not "nograb" in closest[3]):
+                self.rope=world.CreateRopeJoint(bodyA=self.body, bodyB=closest[0], anchorA=ourPoint,anchorB=closest[2], collideConnected=True, userData=self)
+                #dist = math.sqrt((ourPoint[0] - inp.p1[0])**2 + (ourPoint[1] - inp.p1[1])**2)
+                self.rope.SetMaxLength(closest[1])
             
     def update(self):
         pressed = pygame.key.get_pressed()
@@ -275,10 +282,14 @@ class Player():
         if pressed[pygame.K_SPACE]:
             if self.rope:
                 actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
-                if actualLength > 0.5:
-                    self.rope.length=actualLength-0.08
-                    vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*1, (self.rope.anchorB[1] - self.rope.anchorA[1])*1)
-                    self.body.ApplyForce(force=vect, point=self.body.position, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
+                if actualLength > 0.1:
+                    k=abs(self.rope.maxLength-actualLength)
+                    self.rope.SetMaxLength(actualLength)
+                    #print(k)
+                    #self.rope.length=actualLength-0.08
+                    if((k)<0.04):
+                        vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*12, (self.rope.anchorB[1] - self.rope.anchorA[1])*12)
+                        self.body.ApplyForce(force=vect, point=self.rope.anchorA, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
                     #print(self.rope.length)
             else:
                 self.hook()
@@ -334,7 +345,7 @@ pygame.display.set_caption('Hall Booker!')
 world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
-
+time_start=time.time()
 
 jump_out=False
 while jump_out == False:
