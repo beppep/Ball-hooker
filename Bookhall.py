@@ -5,7 +5,7 @@ import Box2D
 import math
 import random
 
-#B69.47588801383972
+#b56.99267888069153 73.21144604682922 n57.24860119819641
 
 ppm=75
 time_step = 1.0/90
@@ -99,6 +99,35 @@ levels = [ #shape means radius btw
     ],[
     [(3,-6), [(5,1),(4,-2),(4,1)]],
 ]],
+[(2,-3), 1, [ #9: Edge
+    [(1.5,-6.5), (0.5,1.5),["win"]],
+    [(8,-9), (8, 1),["death"]],
+    [(8,0), (8, 1),],
+    [(4,-4.5), (3, 0.5),["nograb"]],
+    [(0,-4.5), (1, 4.5),],
+    [(16,0), (1,9),],
+]],
+[(2,-5), 0, [ #10: stuff
+    [(8,-9), (8, 1)],
+    [(8,0), (8, 1)],
+    [(0,-4.5), (1, 4.5)],
+    [(16,-4.5), (1, 4.5)],
+    [(3,-7), (2, 1)],
+    ],[
+    [(8,-2), [(-0.1,-0.1),(0.1,-0.1),(0.1,0.1),(-0.1,0.1)],"death"],
+    [(8,-2.2), [(-0.1,-0.1),(0.1,-0.1),(0.1,0.1),(-0.1,0.1)],"death"],
+    [(8,-2.4), [(-0.1,-0.1),(0.1,-0.1),(0.1,0.1),(-0.1,0.1)],"win"],
+    [(8,-2.6), [(-0.1,-0.1),(0.1,-0.1),(0.1,0.1),(-0.1,0.1)],"death"],
+    [(8,-2.8), [(-0.1,-0.1),(0.1,-0.1),(0.1,0.1),(-0.1,0.1)],"death"],
+]],
+#[(2,-3), 1, [ #9: Edge
+#    [(8,0), (8, 1),],
+#    [(3.5,-3.5), (3, 0.5),["nograb"]],
+#    [(11.5,-3.5), (3, 0.5),["nograb"]],
+#    [(8,-9), (8, 1),],
+#    [(0,-4.5), (1, 4.5),],
+#    [(16,0), (1,9),],
+#]],
 # [(2,-2), 4.6, [ #9: Lava Room 2
 #     [(8,-9), (8, 1),["death"]],
 #     [(8,0), (8, 1),["death","nograb"]],
@@ -108,21 +137,6 @@ levels = [ #shape means radius btw
 # ]],
 ]
 pygame.init()
-
-managers={
-    "":pygame_gui.UIManager(resolution), #
-    "l":pygame_gui.UIManager(resolution), #Level select
-    "p":pygame_gui.UIManager(resolution), #Playing
-    }
-
-# Main
-level_buttons = []
-lpr = 10 #levels per row
-for i in range(len(levels)//lpr+1):
-    for j in range(min(lpr,len(levels)-lpr*i)):
-        button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+j*100, 100+i*100), (100, 100)),text="Level "+str(i*lpr+j),manager=managers["l"])
-        level_buttons.append(button)
-
 
 def loadImage(name,r):
     image = pygame.image.load("BookhallFiles/textures/"+name)
@@ -153,6 +167,12 @@ class Game():
             print(time.time() - time_start)
         self.currentLevel = Level(*levels[num])
 
+    def exitLevel(self):
+        game.currentLevel.killPlayer()
+        game.currentLevel.destroy()
+        game.currentLevel=None
+        game.mode="l"
+
     def update(self):
         if(self.imminentDeath):
             self.currentLevel.killPlayer()
@@ -166,6 +186,9 @@ class Game():
             self.imminentWin=False
         if self.currentLevel:
             self.currentLevel.update()
+        currentTime = time.time()-time_start
+        speedrun_textbox.html_text = "Speeds: <br> "+str(int((currentTime%60)//60))+":"+str(int(currentTime))+":"+str(int(currentTime*100%100))
+        speedrun_textbox.rebuild()
 
     def draw(self):
         if self.currentLevel:
@@ -289,7 +312,8 @@ class Player():
                     #self.rope.length=actualLength-0.08
                     if((k)<0.04):
                         vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*12, (self.rope.anchorB[1] - self.rope.anchorA[1])*12)
-                        self.body.ApplyForce(force=vect, point=self.rope.anchorA, wake=True) #jag ändrade forcen till att vara inåt. om du verkligen vill ha utåt kan du ändra tillbaka
+                        self.body.ApplyForce(force=vect, point=self.rope.anchorA, wake=True)
+                        self.rope.bodyB.ApplyForce(force=(-vect[0],-vect[1]), point=self.rope.anchorB, wake=True)
                     #print(self.rope.length)
             else:
                 self.hook()
@@ -342,6 +366,22 @@ clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
 pygame.display.set_caption('Hall Booker!')
 
+managers={
+    "":pygame_gui.UIManager(resolution), #
+    "l":pygame_gui.UIManager(resolution), #Level select
+    "p":pygame_gui.UIManager(resolution), #Playing
+    }
+
+# Main
+level_buttons = []
+lpr = 10 #levels per row
+for i in range(len(levels)//lpr+1):
+    for j in range(min(lpr,len(levels)-lpr*i)):
+        button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((100+j*100, 100+i*100), (100, 100)),text="Level "+str(i*lpr+j),manager=managers["l"])
+        level_buttons.append(button)
+speedrun_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 20), (200, 64)),html_text="Speeds: <br> 0:00",manager=managers["p"])
+
+
 world = Box2D.b2World(contactListener=myContactListener())
 
 game = Game()
@@ -355,6 +395,9 @@ while jump_out == False:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             jump_out = True
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                game.exitLevel()
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED: #or 1:
                 
