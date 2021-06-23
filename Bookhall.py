@@ -187,7 +187,7 @@ class Game():
         if self.currentLevel:
             self.currentLevel.update()
         currentTime = time.time()-time_start
-        speedrun_textbox.html_text = "Speeds: <br> "+str(int((currentTime%60)//60))+":"+str(int(currentTime))+":"+str(int(currentTime*100%100))
+        speedrun_textbox.html_text = "Speeds: <br> "+str(int(currentTime//60))+":"+str(int(currentTime)%60)+":"+str(int(currentTime*100%100))
         speedrun_textbox.rebuild()
 
     def draw(self):
@@ -221,8 +221,8 @@ class Block():
         if("nograb" in self.blockType):
             color[1]-=50
             color[2]-=50
-        pygame.draw.polygon(game_display, color, vertices, width=0)
-
+        pygame.draw.polygon(game_display, color, vertices)
+#ögon utstickna av de andra omagiska penguins. exiled 500 år sedan. 
 class Level():
 
     def __init__(self, spawnpoint, spawnrotation, boxes, objects=[]):
