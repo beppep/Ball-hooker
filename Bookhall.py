@@ -5,7 +5,7 @@ import Box2D
 import math
 import random
 
-#b56.99267888069153 73.21144604682922 n57.24860119819641
+#b73.65041303634644 n57.24860119819641 <- invalidated
 
 ppm=75
 time_step = 1.0/90
