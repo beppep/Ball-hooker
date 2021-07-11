@@ -98,11 +98,11 @@ levels = [ #shape means radius btw
     [(15,0), (1,9), ["win"]],
 ]],
 [(1,-3), 1, [ #3: lava floor
-    [(8,-9), (8, 1)],
+    [(14,-9), (2, 1)],
     [(8,0), (8, 1)],
     [(0,-4.5), (1, 4.5)],
     [(16,-4.5), (1, 4.5)],
-    [(2,-7), (2, 1)],
+    [(2,-7), (2, 2)],
     [(8,-9), (4, 1), ["death"]],
     [(14,-7), (0.5, 0.5), ["win"]],
 ]],
@@ -205,8 +205,8 @@ pygame.display.set_caption('Hall Booker!')
 def loadImage(name,r,r2=None, dontConvert=False):
     image = pygame.image.load("BookhallFiles/textures/"+name)
     if r2==None:
-    	r2=r
-    image = pygame.transform.scale(image, (int(r*2*ppm), int(r*2*ppm)))
+    r2=r
+    image = pygame.transform.scale(image, (int(r*2*ppm), int(r2*2*ppm)))
     if not dontConvert:
         image=image.convert() #reduces lag
     return image
@@ -296,7 +296,7 @@ class Block():
         pygame.draw.polygon(game_display, color, vertices)
         """
         pygame.draw.polygon(surf, (255,255,255), vertices)
-#ögon utstickna av de andra omagiska penguins. exiled 500 år sedan. 
+#ögon utstickna av de andra omagiska penguins. exiled 500 år sedan.
 class Level():
 
     def __init__(self, spawnpoint, spawnrotation, boxes, objects=[]):
@@ -345,8 +345,9 @@ class Level():
 
         for paintjob in [(self.winImage, lambda x:"win" in x), (self.lavaImage, lambda x:"death" in x), (self.groundImage, lambda x:not "win" in x and not "death" in x)]:
             groundImage = paintjob[0]
-            groundSurf = pygame.Surface(resolution, pygame.SRCALPHA, 32).convert_alpha()
-            groundSurf.fill((255,255,255,0))
+            groundSurf = pygame.Surface(resolution).convert()#?
+            groundSurf.set_colorkey((0,0,0))
+            groundSurf.fill((0,0,0))
             skip=1
             for block in self.blocks+self.dynamicBlocks:
                 if paintjob[1](block.blockType):
@@ -354,19 +355,11 @@ class Level():
                     skip=0
             if skip:
                 continue
-            badgraphics = 1 #try this to not lag
-            if badgraphics:
-                groundSurf = pygame.transform.scale(groundSurf, (160, 90)) #
-                groundImage = pygame.transform.scale(groundImage, (160, 90)) #
-            
-            groundSurf.blit(groundImage,(0,0),None,pygame.BLEND_RGBA_MULT) # blitting large convert_alpha images is laggy
+            mask = pygame.mask.from_surface(groundSurf)
+            mask.to_surface(surface=game_display,setsurface=groundImage,unsetcolor=None)
+            #game_display.blit(groundSurf, (0,0))
 
-            if badgraphics:
-                groundSurf = pygame.transform.scale(groundSurf, resolution) #
-
-            game_display.blit(groundSurf, (0,0))
-
-        
+       
         self.player.draw()
 
 class Player():
@@ -400,7 +393,7 @@ class Player():
                 self.rope=world.CreateRopeJoint(bodyA=self.body, bodyB=closest[0], anchorA=ourPoint,anchorB=closest[2], collideConnected=True, userData=self)
                 #dist = math.sqrt((ourPoint[0] - inp.p1[0])**2 + (ourPoint[1] - inp.p1[1])**2)
                 self.rope.SetMaxLength(closest[1])
-            
+           
     def update(self):
         pressed = pygame.key.get_pressed()
         """
@@ -412,16 +405,16 @@ class Player():
         if pressed[pygame.K_SPACE]:
             if self.rope:
                 if pressed[pygame.K_UP]:
-                	actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
-	                if actualLength > 0.1:
-	                    k=abs(self.rope.maxLength-actualLength)
-	                    self.rope.SetMaxLength(actualLength)
-	                    #print(k)
-	                    if((k)<0.04):
-	                        vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*12, (self.rope.anchorB[1] - self.rope.anchorA[1])*12)
-	                        self.body.ApplyForce(force=vect, point=self.rope.anchorA, wake=True)
-	                        self.rope.bodyB.ApplyForce(force=(-vect[0],-vect[1]), point=self.rope.anchorB, wake=True)
-	                    #print(self.rope.length)
+                actualLength = math.sqrt((self.rope.anchorA[0]-self.rope.anchorB[0])**2 + (self.rope.anchorA[1]-self.rope.anchorB[1])**2)
+               if actualLength > 0.1:
+                   k=abs(self.rope.maxLength-actualLength)
+                   self.rope.SetMaxLength(actualLength)
+                   #print(k)
+                   if((k)<0.04):
+                       vect = ((self.rope.anchorB[0] - self.rope.anchorA[0])*12, (self.rope.anchorB[1] - self.rope.anchorA[1])*12)
+                       self.body.ApplyForce(force=vect, point=self.rope.anchorA, wake=True)
+                       self.rope.bodyB.ApplyForce(force=(-vect[0],-vect[1]), point=self.rope.anchorB, wake=True)
+                   #print(self.rope.length)
             else:
                 self.hook()
         else:
@@ -501,7 +494,7 @@ while jump_out == False:
                 game.exitLevel()
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED: #or 1:
-                
+               
                 #buttons
                 if event.ui_element in level_buttons:
                     game.mode="p"
